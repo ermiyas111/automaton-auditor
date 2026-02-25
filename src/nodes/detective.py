@@ -28,14 +28,17 @@ def detective_repo_node(state: AgentState) -> AgentState:
         except Exception as exc:
             errors.append(f"Failed to clone repository '{repository_path}': {exc}")
 
+
     if resolved_repository_path:
         try:
             project_files = read_project_files.invoke({"repository_path": resolved_repository_path})
+            # Always set evidence as a dict with 'repo_files' key
             existing_evidence = state_data.get("evidence", {})
-            if isinstance(existing_evidence, dict):
-                state_data["evidence"] = existing_evidence | project_files
-            else:
-                state_data["evidence"] = project_files
+            if not isinstance(existing_evidence, dict):
+                existing_evidence = {}
+            merged = dict(existing_evidence)
+            merged["repo_files"] = project_files
+            state_data["evidence"] = merged
         except Exception as exc:
             errors.append(f"Failed to read repository files from '{resolved_repository_path}': {exc}")
     else:
@@ -53,11 +56,20 @@ def detective_doc_node(state: AgentState) -> AgentState:
     state_data = cast(dict[str, Any], state)
     errors: list[str] = list(state_data.get("errors", []))
 
-    pdf_state_keys = ("pdf_path", "audit_report_path", "audit_report_pdf_path")
-    pdf_path = next((str(state_data.get(key, "")).strip() for key in pdf_state_keys if state_data.get(key)), "")
+
+
+    pdf_path = str(state_data.get("pdf_path", "")).strip()
     if pdf_path:
         try:
-            state_data["audit_report_text"] = parse_audit_pdf.invoke({"pdf_path": pdf_path})
+            audit_text = parse_audit_pdf.invoke({"pdf_path": pdf_path})
+            # Always set evidence as a dict with 'doc_text' key
+            existing_evidence = state_data.get("evidence", {})
+            if not isinstance(existing_evidence, dict):
+                existing_evidence = {}
+            merged = dict(existing_evidence)
+            merged["doc_text"] = audit_text
+            state_data["evidence"] = merged
+            state_data["audit_report_text"] = audit_text
         except Exception as exc:
             errors.append(f"Failed to parse audit PDF '{pdf_path}': {exc}")
 
@@ -71,4 +83,10 @@ def detective_doc_node(state: AgentState) -> AgentState:
 def detective_vision_node(state: AgentState) -> AgentState:
     """Detective node for vision/image evidence (stub)."""
     # Placeholder: implement vision/image extraction logic as needed
-    return state
+    # Always set evidence as a dict (even if empty)
+    state_data = cast(dict[str, Any], state)
+    existing_evidence = state_data.get("evidence", {})
+    if not isinstance(existing_evidence, dict):
+        existing_evidence = {}
+    state_data["evidence"] = existing_evidence
+    return cast(AgentState, state_data)

@@ -11,32 +11,24 @@ def evidence_aggregator_node(state: AgentState) -> AgentState:
     state_data = cast(dict[str, Any], state)
     evidence: Evidence = {}
 
-    # Collect repo_files from evidence or legacy evidence
-    repo_files = None
-    if "evidence" in state_data and isinstance(state_data["evidence"], dict):
-        maybe_repo = state_data["evidence"].get("repo_files")
-        if maybe_repo:
-            repo_files = maybe_repo
-        # Backward compatibility: if code files are at top level
-        if not repo_files:
-            # Heuristic: if there are .py or .js keys, treat as repo_files
-            file_keys = [k for k in state_data["evidence"].keys() if isinstance(k, str) and (k.endswith(".py") or k.endswith(".js"))]
-            if file_keys:
-                repo_files = {k: state_data["evidence"][k] for k in file_keys}
+
+    # Always treat evidence as a dict, never as a string
+    existing_evidence = state_data.get("evidence", {})
+    if not isinstance(existing_evidence, dict):
+        existing_evidence = {}
+
+    # Merge repo_files
+    repo_files = existing_evidence.get("repo_files")
     if repo_files:
         evidence["repo_files"] = repo_files
 
-    # Collect doc_text from audit_report_text or evidence
-    doc_text = state_data.get("audit_report_text")
-    if not doc_text and "evidence" in state_data and isinstance(state_data["evidence"], dict):
-        doc_text = state_data["evidence"].get("doc_text")
+    # Merge doc_text
+    doc_text = state_data.get("audit_report_text") or existing_evidence.get("doc_text")
     if doc_text:
         evidence["doc_text"] = doc_text
 
-    # Collect vision_data if present
-    vision_data = None
-    if "evidence" in state_data and isinstance(state_data["evidence"], dict):
-        vision_data = state_data["evidence"].get("vision_data")
+    # Merge vision_data
+    vision_data = existing_evidence.get("vision_data")
     if vision_data:
         evidence["vision_data"] = vision_data
 

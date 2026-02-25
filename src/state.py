@@ -45,6 +45,7 @@ class AgentState(TypedDict):
     task_description: Annotated[str, operator.or_]
     repository_path: str
     audit_report_text: str
-    evidence: Annotated[Evidence, operator.or_]
+    pdf_path: str
+    evidence: Annotated[Any, operator.ior]
     judicial_opinions: Annotated[list[dict[str, Any]], operator.add]
     final_verdict: str
