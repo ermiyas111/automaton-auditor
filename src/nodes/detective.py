@@ -11,9 +11,10 @@ from src.tools.repo_tools import (
 from src.tools.doc_tools import parse_audit_pdf
 
 
-def detective_node(state: AgentState) -> AgentState:
-    """Gather repository evidence and audit PDF text for the Detective layer."""
 
+# Detective node for repository/code evidence
+def detective_repo_node(state: AgentState) -> AgentState:
+    """Detective node for repository/code evidence."""
     state_data = cast(dict[str, Any], state)
     errors: list[str] = list(state_data.get("errors", []))
 
@@ -40,6 +41,18 @@ def detective_node(state: AgentState) -> AgentState:
     else:
         errors.append("No repository_path was provided for evidence collection")
 
+    if errors:
+        state_data["errors"] = errors
+
+    return cast(AgentState, state_data)
+
+
+# Detective node for document (PDF) evidence
+def detective_doc_node(state: AgentState) -> AgentState:
+    """Detective node for document (PDF) evidence."""
+    state_data = cast(dict[str, Any], state)
+    errors: list[str] = list(state_data.get("errors", []))
+
     pdf_state_keys = ("pdf_path", "audit_report_path", "audit_report_pdf_path")
     pdf_path = next((str(state_data.get(key, "")).strip() for key in pdf_state_keys if state_data.get(key)), "")
     if pdf_path:
@@ -52,3 +65,10 @@ def detective_node(state: AgentState) -> AgentState:
         state_data["errors"] = errors
 
     return cast(AgentState, state_data)
+
+
+# Detective node for vision/image evidence (stub)
+def detective_vision_node(state: AgentState) -> AgentState:
+    """Detective node for vision/image evidence (stub)."""
+    # Placeholder: implement vision/image extraction logic as needed
+    return state
