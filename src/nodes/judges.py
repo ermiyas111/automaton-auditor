@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI  # type: ignore[import-not-found]
 
 from src.state import AgentState, JudicialOpinion
 
@@ -47,7 +47,7 @@ def run_judge_persona(state: AgentState, persona_config: dict[str, str]) -> dict
         )
         return {"judicial_opinions": [no_evidence_opinion.model_dump()]}
 
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro", temperature=0)
     structured_llm = llm.with_structured_output(JudicialOpinion)
 
     audit_report_text = str(state_data.get("audit_report_text", ""))[:MAX_AUDIT_REPORT_CHARS]

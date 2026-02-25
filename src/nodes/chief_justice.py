@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI  # type: ignore[import-not-found]
 from pydantic import BaseModel, Field
 
 from src.state import AgentState
@@ -110,7 +110,7 @@ def chief_justice_node(state: AgentState) -> dict[str, Any]:
     final_score = max(1.0, min(5.0, round(computed_score, 2)))
     status = _status_from_score(final_score)
 
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro", temperature=0)
     structured_llm = llm.with_structured_output(ChiefJusticeSynthesis)
 
     system_prompt = (
