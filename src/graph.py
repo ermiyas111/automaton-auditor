@@ -15,7 +15,7 @@ except ImportError:
         return state
 from src.nodes.judges import prosecutor_node, defense_node, tech_lead_node
 from src.nodes.chief_justice import chief_justice_node
-from src.nodes.router import should_continue
+from src.nodes.quality_assurance import should_continue
 from src.nodes.quality_assurance import quality_assurance_node
 
 
