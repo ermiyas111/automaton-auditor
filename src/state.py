@@ -42,9 +42,9 @@ class AgentState(TypedDict):
     while `operator.add` on `judicial_opinions` preserves all parallel findings.
     """
 
-    task_description: str
+    task_description: Annotated[str, operator.or_]
     repository_path: str
     audit_report_text: str
-    evidence: Annotated[Evidence, operator.ior]
+    evidence: Annotated[Evidence, operator.or_]
     judicial_opinions: Annotated[list[dict[str, Any]], operator.add]
     final_verdict: str
