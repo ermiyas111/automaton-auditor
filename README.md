@@ -1,78 +1,62 @@
 # Automaton Auditor
 
-A modular, multi-agent audit system built with LangGraph and Python.
+A modular, auditable, and self-correcting multi-agent audit system built with LangGraph, Python, and Pydantic.
 
 ## Features
-- Parallel evidence gathering from code, documents, and vision sources
-- Fan-in/fan-out graph orchestration for scalable agent workflows
-- Modular detective, judge, and chief justice nodes
-- Self-correction loop with appeal/discovery routing
-- MinMax quality assurance node for claim validation
-- Markdown report rendering for audit results
-- State persistence with MemorySaver (optional)
-- Visual graph architecture (Mermaid PNG)
+- **Pydantic Validation:** All evidence and opinions are structured with Pydantic models for schema enforcement and safe aggregation.
+- **AST-Based Code Analysis:** RepoInvestigator uses Python’s ast module to scan for risky patterns and logic flow.
+- **Ephemeral Sandboxing:** Repositories are cloned into a temporary directory and only read operations are performed.
+- **Fan-Out/Fan-In Workflow:** Parallel detective nodes aggregate evidence for comprehensive analysis.
+- **LLM-Driven Audit:** Expert auditor node synthesizes evidence and report claims for final verdict.
 
-## Project Structure
-```
-automation-auditor/
-├── src/
-│   ├── state.py
-│   ├── graph.py
-│   ├── nodes/
-│   │   ├── detective.py
-│   │   ├── judges.py
-│   │   ├── chief_justice.py
-│   │   ├── evidence_aggregator.py
-│   │   ├── router.py
-│   │   ├── quality_assurance.py
-│   ├── tools/
-│   │   ├── repo_tools.py
-│   │   ├── doc_tools.py
-├── scripts/
-│   ├── test_langsmith.py
-│   ├── e2e_langsmith.py
-├── pyproject.toml
-├── README.md
-```
+## Architecture
+- **StateGraph:** Orchestrates parallel and sequential node execution.
+- **AgentState:** TypedDict for workflow state, with evidence as a list of Pydantic Evidence objects.
+- **Detective Layer:**
+  - `RepoInvestigator_node`: Clones and analyzes repo files, flags risks via AST.
+  - `DocAnalyst_node`: Extracts and analyzes PDF report claims.
+- **Expert Auditor Node:** Combines evidence and report for a comprehensive audit summary.
 
-## Quick Start
-1. Clone the repository and install dependencies:
+## How It Works
+1. **Detective Layer:**
+   - RepoInvestigator clones the repo and scans files for risky patterns.
+   - DocAnalyst extracts claimed features and vulnerabilities from the PDF report.
+2. **Aggregation:**
+   - Evidence from both nodes is merged and validated.
+3. **Audit Synthesis:**
+   - Expert auditor node analyzes all evidence and report claims, returning a final score and list of issues.
+
+## Security & Sandboxing
+- All code analysis is performed in a temporary, isolated directory.
+- No code execution occurs during analysis.
+
+## Extensibility
+- Easily add new detective or auditor nodes.
+- Supports advanced orchestration patterns (fan-out/fan-in, conditional routing).
+
+## Requirements
+- Python 3.10+
+- LangGraph
+- Pydantic
+- PyPDF2
+- GitPython
+
+## Usage
+1. Install dependencies:
    ```bash
-   git clone <repo-url>
-   cd automation-auditor
-   uv pip install
+   pip install -r requirements.txt
    ```
 2. Run the audit workflow:
    ```bash
    uv run python scripts/test_langsmith.py
    ```
-3. View the graph architecture:
-   ```bash
-   uv run python src/graph.py
-   # See graph_structure.png
-   ```
 
-## LangGraph Workflow
-- **Detective Node:** Gathers evidence from repo, docs, vision
-- **Judges:** Prosecutor, Defense, Tech Lead analyze evidence in parallel
-- **Chief Justice:** Aggregates opinions, issues verdict
-- **Router:** Handles appeal/discovery loop based on verdict confidence
-- **Quality Assurance:** Validates claims and triggers re-evaluation if needed
-- **Markdown Report:** Final output for audit results
-
-## Customization
-- Add new detective or judge nodes in `src/nodes/`
-- Extend evidence types in `src/state.py`
-- Modify routing logic in `src/nodes/router.py`
-
-## Visualization
-- The graph structure is rendered as a PNG for easy verification.
+## Project Structure
+- `src/state.py`: State schema and Pydantic models
+- `src/nodes/detective.py`: Detective layer nodes
+- `src/nodes/auditor.py`: Expert auditor node
+- `src/graph.py`: Workflow orchestration
+- `scripts/test_langsmith.py`: Example test harness
 
 ## License
 MIT
-
-## Authors
-- Your Name
-
----
-For advanced debugging and tracing, use LangSmith and inspect runs at https://smith.langchain.com/
