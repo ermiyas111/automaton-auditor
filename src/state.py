@@ -43,7 +43,7 @@ class AgentState(TypedDict):
     `operator.add` on `evidence` enables aggregation of Evidence objects from parallel detectives.
     """
 
-    task_description: Annotated[str, operator.or_]
+    task_description: str
     repository_path: str
     audit_report_text: str
     pdf_path: str
