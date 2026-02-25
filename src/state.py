@@ -21,6 +21,20 @@ class JudicialOpinion(BaseModel):
     cited_files: List[str]
 
 
+
+# Structured evidence container for aggregation and merging
+
+# Reducers for Evidence fields
+from typing import Annotated
+import operator
+
+class Evidence(TypedDict, total=False):
+    repo_files: Annotated[dict[str, Any], operator.ior]  # Merge dicts from parallel detectives
+    doc_text: Annotated[str, operator.or_]               # Prefer non-null, or latest non-empty
+    vision_data: Annotated[Any, operator.or_]            # Prefer non-null, or latest non-empty
+    # Add more fields as needed for other evidence types
+
+
 class AgentState(TypedDict):
     """State container for LangGraph nodes in the Digital Courtroom workflow.
 
@@ -31,6 +45,6 @@ class AgentState(TypedDict):
     task_description: str
     repository_path: str
     audit_report_text: str
-    evidence: Annotated[dict[str, Any], operator.ior]
+    evidence: Annotated[Evidence, operator.ior]
     judicial_opinions: Annotated[list[dict[str, Any]], operator.add]
     final_verdict: str
