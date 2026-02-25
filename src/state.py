@@ -28,23 +28,25 @@ class JudicialOpinion(BaseModel):
 from typing import Annotated
 import operator
 
-class Evidence(TypedDict, total=False):
-    repo_files: Annotated[dict[str, Any], operator.ior]  # Merge dicts from parallel detectives
-    doc_text: Annotated[str, operator.or_]               # Prefer non-null, or latest non-empty
-    vision_data: Annotated[Any, operator.or_]            # Prefer non-null, or latest non-empty
-    # Add more fields as needed for other evidence types
+
+# New Pydantic Evidence model for Detective Layer
+class Evidence(BaseModel):
+    source: str
+    content_summary: str
+    raw_data: dict
+    critical_findings: List[str]
 
 
 class AgentState(TypedDict):
     """State container for LangGraph nodes in the streamlined Expert Auditor workflow.
 
-    `operator.ior` on `evidence` enables dictionary merges from multiple agents.
+    `operator.add` on `evidence` enables aggregation of Evidence objects from parallel detectives.
     """
 
-    task_description: Annotated[str, operator.or_]
+    task_description: str
     repository_path: str
     audit_report_text: str
     pdf_path: str
-    evidence: Annotated[Any, operator.ior]
+    evidence: Annotated[List[Evidence], operator.add]
     audit_summary: dict[str, Any]
     final_verdict: str

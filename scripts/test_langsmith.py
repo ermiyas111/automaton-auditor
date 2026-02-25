@@ -8,10 +8,10 @@ initial_state = {
     "task_description": "Audit this repository against the provided report.",
     "repository_path": "https://github.com/ermiyas111/Project-Chimera",
     "audit_report_text": "",
-    "evidence": {},
-    "judicial_opinions": [],
-    "final_verdict": "",
     "pdf_path": "C:\\Users\\HP\\Downloads\\ProjectChimeraResearch.pdf",
+    "evidence": [],  # Must be a list, not a dict
+    "audit_summary": {},
+    "final_verdict": "",
 }
 
 result = graph.invoke(

@@ -7,7 +7,9 @@ def expert_auditor_node(state: AgentState) -> AgentState:
     Analyzes code evidence and audit_report_text, returns final score and issues.
     """
     state_data = cast(dict[str, Any], state)
-    evidence = state_data.get("evidence", {})
+    evidence = state_data.get("evidence", [])
+    if not isinstance(evidence, list):
+        evidence = [evidence] if evidence else []
     audit_report_text = state_data.get("audit_report_text", "")
     # System prompt for LLM (pseudo-code, replace with actual LLM call)
     system_prompt = (
