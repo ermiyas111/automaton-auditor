@@ -1,0 +1,7 @@
+Mermaid graph rendering is not supported in file creation. Please use the workflow's built-in visualization logic to generate and save the Mermaid PNG after compiling the graph.
+
+Example (add to your workflow):
+
+from langgraph.graph import visualize
+workflow = build_graph()
+visualize(workflow, output_path="graph.png")
