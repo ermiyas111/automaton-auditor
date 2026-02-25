@@ -36,10 +36,9 @@ class Evidence(TypedDict, total=False):
 
 
 class AgentState(TypedDict):
-    """State container for LangGraph nodes in the Digital Courtroom workflow.
+    """State container for LangGraph nodes in the streamlined Expert Auditor workflow.
 
-    `operator.ior` on `evidence` enables dictionary merges from multiple agents,
-    while `operator.add` on `judicial_opinions` preserves all parallel findings.
+    `operator.ior` on `evidence` enables dictionary merges from multiple agents.
     """
 
     task_description: Annotated[str, operator.or_]
@@ -47,5 +46,5 @@ class AgentState(TypedDict):
     audit_report_text: str
     pdf_path: str
     evidence: Annotated[Any, operator.ior]
-    judicial_opinions: Annotated[list[dict[str, Any]], operator.add]
+    audit_summary: dict[str, Any]
     final_verdict: str
