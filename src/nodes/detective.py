@@ -7,8 +7,8 @@ from src.tools.repo_tools import (
     is_repository_url,
     clone_repository,
     read_project_files,
-    parse_audit_pdf,
 )
+from src.tools.doc_tools import parse_audit_pdf
 
 
 def detective_node(state: AgentState) -> AgentState:
