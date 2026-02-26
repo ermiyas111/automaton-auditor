@@ -1,5 +1,5 @@
 [project]
-name = "automation-auditor"
+name = "automaton-auditor"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"

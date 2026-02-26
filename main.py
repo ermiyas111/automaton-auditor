@@ -1,5 +1,5 @@
 def main():
-    print("Hello from automation-auditor!")
+    print("Hello from automaton-auditor!")
 
 
 if __name__ == "__main__":

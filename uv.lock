@@ -122,7 +122,7 @@ wheels = [
 ]
 
 [[package]]
-name = "automation-auditor"
+name = "automaton-auditor"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

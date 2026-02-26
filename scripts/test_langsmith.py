@@ -16,6 +16,6 @@ initial_state = {
 
 result = graph.invoke(
     initial_state,
-    config={"run_name": "automation-auditor-test", "tags": ["langsmith", "test"]},
+    config={"run_name": "automaton-auditor-test", "tags": ["langsmith", "test"]},
 )
 print(result)

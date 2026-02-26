@@ -17,7 +17,7 @@ def is_repository_url(value: str) -> bool:
 @tool
 def clone_repository(url: str) -> str:
     """Clone a git repository into a temporary directory and return the local path."""
-    temp_dir = Path(tempfile.mkdtemp(prefix="automation_auditor_"))
+    temp_dir = Path(tempfile.mkdtemp(prefix="automaton_auditor_"))
     local_repo_path = temp_dir / "repo"
     Repo.clone_from(url, local_repo_path)
     return str(local_repo_path)
