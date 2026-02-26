@@ -9,7 +9,7 @@ initial_state = {
     "repository_path": "https://github.com/ermiyas111/Project-Chimera",
     "audit_report_text": "",
     "pdf_path": "C:\\Users\\HP\\Downloads\\ProjectChimeraResearch.pdf",
-    "evidence": [],  # Must be a list, not a dict
+    "evidence": [],
     "audit_summary": {},
     "final_verdict": "",
 }

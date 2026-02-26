@@ -50,8 +50,8 @@ def RepoInvestigator_node(state: AgentState) -> Dict:
         raw_data=file_map,
         critical_findings=critical_findings,
     )
-    # Return as list for operator.add
-    return {**state, "evidence": [evidence]}
+    # Return evidence_list only for reducer
+    return {"evidence_list": state.get("evidence_list", []) + [evidence]}
 
 def DocAnalyst_node(state: AgentState) -> Dict:
     pdf_path = Path(state["pdf_path"]).expanduser().resolve()
@@ -72,4 +72,5 @@ def DocAnalyst_node(state: AgentState) -> Dict:
         raw_data={"claimed_features": claimed, "reported_vulnerabilities": vulnerabilities, "full_text": text},
         critical_findings=findings,
     )
-    return {**state, "evidence": [evidence]}
+    # Return evidence_list only for reducer
+    return {"evidence_list": state.get("evidence_list", []) + [evidence]}

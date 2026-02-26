@@ -14,5 +14,11 @@ def evidence_aggregator_node(state: AgentState) -> Dict[str, Any]:
         logging.warning("Sanity Check: No code evidence found in evidence_list.")
     if "pdf_report" not in sources:
         logging.warning("Sanity Check: No document evidence found in evidence_list.")
-    # Return consolidated state
-    return {"evidence_list": evidence_list}
+    # Optionally aggregate evidence
+    aggregated = Evidence(
+        source="aggregator",
+        content_summary=f"Aggregated {len(evidence_list)} items.",
+        raw_data={"sources": list(sources)},
+        critical_findings=[ev.content_summary for ev in evidence_list],
+    )
+    return {"evidence_list": [aggregated]}
