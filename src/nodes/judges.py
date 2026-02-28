@@ -86,7 +86,7 @@ def judge_node(state: AgentState, persona: str, focus_sections: list[str]) -> di
 
     # Initialize Gemini LLM with structured output
     api_key = os.environ.get("GOOGLE_API_KEY")
-    llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key).with_structured_output(JudicialOpinion)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=api_key).with_structured_output(JudicialOpinion)
 
     try:
         response = llm.invoke([

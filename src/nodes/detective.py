@@ -5,6 +5,9 @@ from typing import Any, Dict, List, cast
 from src.state import AgentState, Evidence
 from src.tools.repo_tools import read_project_files
 from src.tools.doc_tools import parse_audit_pdf
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import SystemMessage
+import os
 
 logging.basicConfig(level=logging.INFO)
 
@@ -147,8 +150,15 @@ def RepoInvestigator_node(state: AgentState) -> Dict:
 
 def DocAnalyst_node(state: AgentState) -> Dict:
     pdf_path = Path(state["pdf_path"]).expanduser().resolve()
-    logging.info(f"[DocAnalyst] Processing PDF at: {pdf_path}")
-    text = parse_audit_pdf.invoke({"pdf_path": str(pdf_path)})
+    logging.info(f"[DocAnalyst] Processing file at: {pdf_path}")
+    text = None
+    if pdf_path.suffix.lower() == ".pdf":
+        text = parse_audit_pdf.invoke({"pdf_path": str(pdf_path)})
+    elif pdf_path.suffix.lower() == ".md":
+        from src.tools.doc_tools import read_markdown_file
+        text = read_markdown_file(str(pdf_path))
+    else:
+        raise ValueError(f"Unsupported file type for DocAnalyst: {pdf_path.suffix}")
     import re
     findings = []
     protocol_results = {}
@@ -181,20 +191,11 @@ def DocAnalyst_node(state: AgentState) -> Dict:
     elif "citation_check" not in protocol_results:
         protocol_results["citation_check"] = "No hallucinated files."
 
-    # --- Protocol B: Concept Verification ---
-    buzzwords = ["Dialectical Synthesis", "Metacognition"]
-    for word in buzzwords:
-        idx = text.find(word)
-        if idx == -1:
-            continue
-        # Look for explanation within 200 chars after the word
-        snippet = text[idx:idx+200]
-        if re.search(r"explain|how|implemented|logic|architecture|flow", snippet, re.IGNORECASE):
-            findings.append(f"Concept '{word}' explained in context.")
-            protocol_results[f"concept_{word}"] = "Explained"
-        else:
-            findings.append(f"Concept '{word}' used as buzzword only.")
-            protocol_results[f"concept_{word}"] = "Buzzword only"
+    # --- Protocol B: Concept Verification (LLM-based, generalized) ---
+    from src.tools.doc_tools import verify_concepts_in_report
+    concept_result = verify_concepts_in_report(text)
+    findings.extend(concept_result["findings"])
+    protocol_results.update(concept_result["protocol_results"])
 
     # Legacy: extract claimed features and vulnerabilities
     claimed = re.findall(r"Claimed Features:(.*?)(?:\n\w|$)", text, re.DOTALL)
