@@ -52,24 +52,40 @@ def RepoInvestigator_node(state: AgentState) -> Dict:
     import ast
     try:
         tree = ast.parse(graph_code, filename="src/graph.py")
-        # Count add_edge calls by source node
-        edge_map = {}
+        # Count add_edge calls by source node (fan-out) and by destination node (fan-in)
+        edge_map_out = {}
+        edge_map_in = {}
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and hasattr(node.func, 'attr') and node.func.attr == 'add_edge':
                 if len(node.args) >= 2:
                     src = None
+                    dst = None
+                    # Source node
                     if isinstance(node.args[0], ast.Constant):
                         src = node.args[0].value
                     elif isinstance(node.args[0], ast.Str):  # Python <3.8
                         src = node.args[0].s
+                    # Destination node
+                    if isinstance(node.args[1], ast.Constant):
+                        dst = node.args[1].value
+                    elif isinstance(node.args[1], ast.Str):
+                        dst = node.args[1].s
                     if src:
-                        edge_map.setdefault(src, 0)
-                        edge_map[src] += 1
-        fanout_found = any(count > 1 for count in edge_map.values())
-        if fanout_found:
-            protocol_results["graph_wiring"] = "PASS: Parallel fan-out detected."
+                        edge_map_out.setdefault(src, 0)
+                        edge_map_out[src] += 1
+                    if dst:
+                        edge_map_in.setdefault(dst, 0)
+                        edge_map_in[dst] += 1
+        fanout_found = any(count > 1 for count in edge_map_out.values())
+        fanin_found = any(count > 1 for count in edge_map_in.values())
+        if fanout_found and fanin_found:
+            protocol_results["graph_wiring"] = "PASS: Parallel fan-out and fan-in detected."
+        elif fanout_found:
+            protocol_results["graph_wiring"] = "Parallel fan-out detected, but no parallel fan-in."
+        elif fanin_found:
+            protocol_results["graph_wiring"] = "Parallel fan-in detected, but no parallel fan-out."
         else:
-            protocol_results["graph_wiring"] = "No parallel fan-out detected."
+            protocol_results["graph_wiring"] = "No parallel fan-out or fan-in detected."
     except Exception as e:
         protocol_results["graph_wiring"] = f"ERROR: AST parse failed: {e}"
 
@@ -84,7 +100,19 @@ def RepoInvestigator_node(state: AgentState) -> Dict:
             protocol_results["git_narrative"] = "Monolithic History: Only one commit."
             critical_findings.append("Monolithic History: Only one commit.")
         else:
-            protocol_results["git_narrative"] = f"{commit_count} commits."
+            # Calculate days between first and last commit (inclusive)
+            if timestamps:
+                min_ts = min(timestamps)
+                max_ts = max(timestamps)
+                days = max(1, int((max_ts - min_ts) / 86400) + 1)
+                avg_commits_per_day = commit_count / days
+                if avg_commits_per_day < 3:
+                    protocol_results["git_narrative"] = f"Monolithic History: {commit_count} commits over {days} days (avg {avg_commits_per_day:.2f}/day)."
+                    critical_findings.append(f"Monolithic History: {commit_count} commits over {days} days (avg {avg_commits_per_day:.2f}/day).")
+                else:
+                    protocol_results["git_narrative"] = f"{commit_count} commits over {days} days (avg {avg_commits_per_day:.2f}/day)."
+            else:
+                protocol_results["git_narrative"] = f"{commit_count} commits."
     except Exception as e:
         protocol_results["git_narrative"] = f"ERROR: git log failed: {e}"
 
