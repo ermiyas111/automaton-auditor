@@ -35,6 +35,7 @@ class Evidence(BaseModel):
     content_summary: str
     raw_data: dict
     critical_findings: List[str]
+    protocol_results: dict = Field(default_factory=dict, description="Forensic protocol pass/fail and analysis flags.")
 
 
 class AgentState(TypedDict):

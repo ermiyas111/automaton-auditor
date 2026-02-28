@@ -14,7 +14,7 @@ load_dotenv()
 graph = build_graph()
 initial_state = {
     "task_description": "Audit this repository against the provided report.",
-    "repository_path": "https://github.com/IbnuEyni/10Acweek2.git",
+    "repository_path": "https://github.com/ermiyas111/10Acweek2",
     "audit_report_text": "",
     "pdf_path": "C:\\Users\\HP\\Downloads\\final_report.pdf",
     "evidence": [],

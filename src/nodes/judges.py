@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+
 from typing import Any, cast
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import SystemMessage, HumanMessage
+import os
 
 
 
@@ -34,33 +38,82 @@ def extract_rubric_sections(rubric, section_names):
     return [d for d in rubric["dimensions"] if d["name"] in section_names]
 
 # Shared judge logic
+
 def judge_node(state: AgentState, persona: str, focus_sections: list[str]) -> dict:
+    print(f"--- {persona} is evaluating ---")
     state_data = cast(dict[str, Any], state)
     rubric = state_data.get("rubric", {})
     evidence_list = state_data.get("evidence_list", [])
     audit_report_text = state_data.get("audit_report_text", "")
-    # Extract relevant rubric sections
     relevant_sections = extract_rubric_sections(rubric, focus_sections)
-    # Compose rationale and score (mock logic, replace with LLM call)
-    cited_files = []
-    rationale = []
-    total_score = 0
-    for section in relevant_sections:
-        # Example: look for evidence that matches rubric
-        section_score = 4  # Placeholder: real logic/LLM would analyze evidence_list
-        total_score += section_score
-        rationale.append(f"Assessed {section['name']}: {section['success_pattern']}")
-        # Optionally cite files (mock)
-        if evidence_list:
-            cited_files.append(evidence_list[0].raw_data.keys())
-    avg_score = total_score // len(relevant_sections) if relevant_sections else 1
-    opinion = JudicialOpinion(
-        persona=persona,
-        score=avg_score,
-        rationale="\n".join(rationale),
-        cited_files=list(set([f for sublist in cited_files for f in sublist])) if cited_files else [],
+    if not relevant_sections:
+        return {"judicial_opinions": [JudicialOpinion(
+            persona=persona,
+            score=1,
+            rationale="No relevant rubric section found.",
+            cited_files=[],
+        ).model_dump()]}
+
+    # Prepare evidence context
+    evidence_texts = []
+    cited_files = set()
+    for ev in evidence_list:
+        if hasattr(ev, 'content_summary'):
+            evidence_texts.append(ev.content_summary)
+        if hasattr(ev, 'critical_findings'):
+            evidence_texts.extend(ev.critical_findings)
+        if hasattr(ev, 'raw_data') and isinstance(ev.raw_data, dict):
+            cited_files.update(ev.raw_data.keys())
+    evidence_text = "\n".join(evidence_texts)[:MAX_AUDIT_REPORT_CHARS]
+
+    # Use only the first relevant rubric section for this persona
+    rubric_section = relevant_sections[0]
+    rubric_section_text = f"{rubric_section['name']}: {rubric_section['success_pattern']}\nFailure: {rubric_section['failure_pattern']}"
+
+    # Persona-specific instructions
+    persona_instructions = {
+        "Prosecutor": "Be extremely strict, adversarial, and focus on finding flaws, especially security and vulnerability issues.",
+        "Defense": "Be balanced, reward effort, intent, and creative workarounds, but do not ignore critical flaws.",
+        "TechLead": "Be pragmatic, focus on architectural soundness, maintainability, and practical viability.",
+    }
+    persona_instruction = persona_instructions.get(persona, "Be fair and thorough.")
+
+    system_prompt = (
+        f"You are the {persona} for a Technical Audit. Your task is to grade the project based ONLY on the following rubric section: {rubric_section_text}\n"
+        f"Evidence gathered from the repository and docs: {evidence_text}\n"
+        f"Instructions: {persona_instruction} Cite specific files from the evidence. Respond in the following JSON format: {{'persona': str, 'score': int (1-5), 'rationale': str, 'cited_files': list[str]}}."
     )
-    return {"judicial_opinions": [opinion.model_dump()]}
+
+    # Initialize Gemini LLM with structured output
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key).with_structured_output(JudicialOpinion)
+
+    try:
+        response = llm.invoke([
+            SystemMessage(content=system_prompt),
+            # Optionally, add a HumanMessage if you want to allow user input
+        ])
+        # Validate output is a JudicialOpinion
+        if isinstance(response, JudicialOpinion):
+            return {"judicial_opinions": [response.model_dump()]}
+        elif isinstance(response, dict):
+            # Defensive: try to coerce
+            return {"judicial_opinions": [JudicialOpinion(**response).model_dump()]}
+        else:
+            return {"judicial_opinions": [JudicialOpinion(
+                persona=persona,
+                score=1,
+                rationale="LLM did not return a valid JudicialOpinion.",
+                cited_files=list(cited_files),
+            ).model_dump()]}
+    except Exception as e:
+        return {"judicial_opinions": [JudicialOpinion(
+            persona=persona,
+            score=1,
+            rationale=f"LLM call failed: {e}",
+            cited_files=list(cited_files),
+        ).model_dump()]}
+
 
 
 def prosecutor_node(state: AgentState) -> dict:
@@ -68,9 +121,11 @@ def prosecutor_node(state: AgentState) -> dict:
     return judge_node(state, "Prosecutor", ["Security", "Vulnerability"])
 
 
+
 def defense_node(state: AgentState) -> dict:
     # Focus on 'Architecture' and 'Design Intent' rubric sections
     return judge_node(state, "Defense", ["Architecture", "Design Intent"])
+
 
 
 def tech_lead_node(state: AgentState) -> dict:
