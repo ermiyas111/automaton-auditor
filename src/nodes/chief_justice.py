@@ -110,12 +110,18 @@ def chief_justice_node(state: AgentState) -> dict[str, Any]:
     final_score = max(1.0, min(5.0, round(computed_score, 2)))
     status = _status_from_score(final_score)
 
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro", temperature=0)
+
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0)
     structured_llm = llm.with_structured_output(ChiefJusticeSynthesis)
 
+
+    rubric = state_data.get("rubric", {})
+    weights = rubric.get("weights", {}) if rubric else {}
     system_prompt = (
         "You are the Chief Justice. Review the attached Prosecution, Defense, and Technical Lead opinions. "
-        "Resolve their contradictions and write a final executive verdict."
+        "Resolve their contradictions and write a final executive verdict. "
+        f"Use the following rubric weights for aggregation: {weights if weights else 'default weights'}"
     )
 
     human_prompt = (
