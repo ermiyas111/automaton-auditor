@@ -12,13 +12,16 @@ from typing import Annotated, Any, List, TypedDict
 from pydantic import BaseModel, Field
 
 
-class JudicialOpinion(BaseModel):
-    """Structured opinion emitted by each courtroom persona."""
-
-    persona: str
+class CriterionAssessment(BaseModel):
+    criterion_id: str
     score: int = Field(ge=1, le=5)
     rationale: str
-    cited_files: List[str]
+
+class JudicialOpinion(BaseModel):
+    """Structured dialectical opinion for each persona, covering all rubric criteria."""
+    persona: str
+    assessments: list[CriterionAssessment]
+    overall_summary: str
 
 
 

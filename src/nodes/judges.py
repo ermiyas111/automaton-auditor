@@ -8,7 +8,7 @@ import os
 
 
 
-from src.state import AgentState, JudicialOpinion
+from src.state import AgentState, JudicialOpinion, CriterionAssessment
 
 
 MAX_FILES_FOR_PROMPT = 30
@@ -32,102 +32,93 @@ def _format_evidence_for_prompt(evidence: dict[str, Any]) -> str:
 
 
 # Helper to extract rubric sections
-def extract_rubric_sections(rubric, section_names):
+
+# Helper to extract all rubric criteria
+def extract_rubric_criteria(rubric):
     if not rubric or "dimensions" not in rubric:
         return []
-    return [d for d in rubric["dimensions"] if d["name"] in section_names]
+    return rubric["dimensions"]
 
 # Shared judge logic
 
-def judge_node(state: AgentState, persona: str, focus_sections: list[str]) -> dict:
+
+def judge_node(state: AgentState, persona: str) -> dict:
     print(f"--- {persona} is evaluating ---")
-    state_data = cast(dict[str, Any], state)
-    rubric = state_data.get("rubric", {})
-    evidence_list = state_data.get("evidence_list", [])
-    audit_report_text = state_data.get("audit_report_text", "")
-    relevant_sections = extract_rubric_sections(rubric, focus_sections)
-    if not relevant_sections:
+    import json
+    rubric_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "rubric.json")
+    with open(rubric_path, "r", encoding="utf-8") as f:
+        rubric = json.load(f)
+    formatted_brief = state.get("formatted_brief", "")
+    unified_forensics = state.get("unified_forensics", {})
+    rubric_criteria = extract_rubric_criteria(rubric)
+    if not rubric_criteria:
         return {"judicial_opinions": [JudicialOpinion(
             persona=persona,
-            score=1,
-            rationale="No relevant rubric section found.",
-            cited_files=[],
+            assessments=[],
+            overall_summary="No rubric criteria found."
         ).model_dump()]}
 
-    # Prepare evidence context
-    evidence_texts = []
-    cited_files = set()
-    for ev in evidence_list:
-        if hasattr(ev, 'content_summary'):
-            evidence_texts.append(ev.content_summary)
-        if hasattr(ev, 'critical_findings'):
-            evidence_texts.extend(ev.critical_findings)
-        if hasattr(ev, 'raw_data') and isinstance(ev.raw_data, dict):
-            cited_files.update(ev.raw_data.keys())
-    evidence_text = "\n".join(evidence_texts)[:MAX_AUDIT_REPORT_CHARS]
-
-    # Use only the first relevant rubric section for this persona
-    rubric_section = relevant_sections[0]
-    rubric_section_text = f"{rubric_section['name']}: {rubric_section['success_pattern']}\nFailure: {rubric_section['failure_pattern']}"
-
-    # Persona-specific instructions
     persona_instructions = {
-        "Prosecutor": "Be extremely strict, adversarial, and focus on finding flaws, especially security and vulnerability issues.",
-        "Defense": "Be balanced, reward effort, intent, and creative workarounds, but do not ignore critical flaws.",
-        "TechLead": "Be pragmatic, focus on architectural soundness, maintainability, and practical viability.",
+        "Prosecutor": "Be extremely strict, adversarial, and focus on finding flaws, especially security and vulnerability issues. For each criterion, cite specific evidence or files that support your score. If a security flaw is found, explain it in detail. Keep each rationale concise (1-2 sentences).",
+        "Defense": "Be balanced, reward effort, intent, and creative workarounds, but do not ignore critical flaws. For each criterion, highlight positive intent and creative solutions, but be honest about any shortcomings. Keep each rationale concise (1-2 sentences).",
+        "TechLead": "Be pragmatic, focus on architectural soundness, maintainability, and practical viability. For each criterion, assess how the architecture supports long-term success and practical use. Keep each rationale concise (1-2 sentences).",
     }
     persona_instruction = persona_instructions.get(persona, "Be fair and thorough.")
 
+    # Compose a prompt for the LLM to produce a list of CriterionAssessment for each rubric criterion
+    criteria_descriptions = "\n".join([
+        f"- {c['name']} (id: {c['id']}): Success: {c['success_pattern']} | Failure: {c['failure_pattern']}" for c in rubric_criteria
+    ])
+
     system_prompt = (
-        f"You are the {persona} for a Technical Audit. Your task is to grade the project based ONLY on the following rubric section: {rubric_section_text}\n"
-        f"Evidence gathered from the repository and docs: {evidence_text}\n"
-        f"Instructions: {persona_instruction} Cite specific files from the evidence. Respond in the following JSON format: {{'persona': str, 'score': int (1-5), 'rationale': str, 'cited_files': list[str]}}."
+        f"You are the {persona} for a Technical Audit. Your task is to grade the project on EVERY rubric criterion below.\n"
+        f"Rubric Criteria:\n{criteria_descriptions}\n"
+        f"Forensic Brief: {formatted_brief}\n"
+        f"Instructions: {persona_instruction} For each criterion, respond with a JSON object: {{'criterion_name': str, 'score': int (1-5), 'rationale': str}}. After all criteria, provide an overall_summary string that synthesizes your findings. Respond in JSON: {{'assessments': [CriterionAssessment...], 'overall_summary': str}}."
     )
 
-    # Initialize Gemini LLM with structured output
     api_key = os.environ.get("GOOGLE_API_KEY")
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=api_key).with_structured_output(JudicialOpinion)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=api_key)
 
     try:
-        response = llm.invoke([
-            SystemMessage(content=system_prompt),
-            # Optionally, add a HumanMessage if you want to allow user input
-        ])
-        # Validate output is a JudicialOpinion
-        if isinstance(response, JudicialOpinion):
-            return {"judicial_opinions": [response.model_dump()]}
-        elif isinstance(response, dict):
-            # Defensive: try to coerce
-            return {"judicial_opinions": [JudicialOpinion(**response).model_dump()]}
+        # Use the LLM to generate the full JudicialOpinion (assessments + summary)
+        response = llm.invoke(system_prompt)
+        # Try to parse the response as a JudicialOpinion
+        content = getattr(response, 'content', None)
+        import json, re
+        if isinstance(content, str) and content.strip():
+            # Remove markdown code block if present
+            match = re.search(r"```(?:json)?\s*(.*?)\s*```", content, re.DOTALL | re.IGNORECASE)
+            if match:
+                json_str = match.group(1)
+            else:
+                json_str = content
+            try:
+                result = json.loads(json_str)
+            except Exception as e:
+                print(f"Failed to parse JSON: {e}\nContent was: {json_str}")
+                result = {}
         else:
-            return {"judicial_opinions": [JudicialOpinion(
-                persona=persona,
-                score=1,
-                rationale="LLM did not return a valid JudicialOpinion.",
-                cited_files=list(cited_files),
-            ).model_dump()]}
+            result = {}
+
+        return {persona: result}
     except Exception as e:
-        return {"judicial_opinions": [JudicialOpinion(
-            persona=persona,
-            score=1,
-            rationale=f"LLM call failed: {e}",
-            cited_files=list(cited_files),
-        ).model_dump()]}
+        return {persona: {"error": str(e)}}
+
 
 
 
 def prosecutor_node(state: AgentState) -> dict:
-    # Focus on 'Security' and 'Vulnerability' rubric sections
-    return judge_node(state, "Prosecutor", ["Security", "Vulnerability"])
+    return judge_node(state, "Prosecutor")
+
 
 
 
 def defense_node(state: AgentState) -> dict:
-    # Focus on 'Architecture' and 'Design Intent' rubric sections
-    return judge_node(state, "Defense", ["Architecture", "Design Intent"])
+    return judge_node(state, "Defense")
+
 
 
 
 def tech_lead_node(state: AgentState) -> dict:
-    # Focus on 'Code Quality', 'Type Hinting', and 'State Management' rubric sections
-    return judge_node(state, "TechLead", ["Code Quality", "Type Hinting", "State Management"])
+    return judge_node(state, "TechLead")
