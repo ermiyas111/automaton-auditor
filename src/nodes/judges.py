@@ -48,7 +48,7 @@ def judge_node(state: AgentState, persona: str) -> dict:
     rubric_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "rubric.json")
     with open(rubric_path, "r", encoding="utf-8") as f:
         rubric = json.load(f)
-    formatted_brief = state.get("formatted_brief", "")
+    unified_forensics = state.get("unified_forensics", "")
     unified_forensics = state.get("unified_forensics", {})
     rubric_criteria = extract_rubric_criteria(rubric)
     if not rubric_criteria:
@@ -73,8 +73,8 @@ def judge_node(state: AgentState, persona: str) -> dict:
     system_prompt = (
         f"You are the {persona} for a Technical Audit. Your task is to grade the project on EVERY rubric criterion below.\n"
         f"Rubric Criteria:\n{criteria_descriptions}\n"
-        f"Forensic Brief: {formatted_brief}\n"
-        f"Instructions: {persona_instruction} For each criterion, respond with a JSON object: {{'criterion_name': str, 'score': int (1-5), 'rationale': str}}. After all criteria, provide an overall_summary string that synthesizes your findings. Respond in JSON: {{'assessments': [CriterionAssessment...], 'overall_summary': str}}."
+        f"Forensic Brief: {unified_forensics}\n"
+        f"Instructions: {persona_instruction} For each criterion, respond with a JSON object: {{'criterion_id': str, 'criterion_name': str, 'score': int (1-5), 'rationale': str}}. After all criteria, provide an overall_summary string that synthesizes your findings. Respond in JSON: {{'assessments': [CriterionAssessment...], 'overall_summary': str}}."
     )
 
     api_key = os.environ.get("GOOGLE_API_KEY")
@@ -101,9 +101,9 @@ def judge_node(state: AgentState, persona: str) -> dict:
         else:
             result = {}
 
-        return {persona: result}
+        return {"judicial_opinions": state.get("judicial_opinions", []) + [{**result, "persona": persona}]}
     except Exception as e:
-        return {persona: {"error": str(e)}}
+        return {"judicial_opinions": state.get("judicial_opinions", []) + [{"error": str(e), "persona": persona}]}
 
 
 

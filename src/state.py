@@ -54,6 +54,6 @@ class AgentState(TypedDict):
     evidence_list: Annotated[List[Evidence], operator.add]
     audit_summary: dict[str, Any]
     final_verdict: str
-    judicial_opinions: Annotated[List[JudicialOpinion], operator.add]
+    judicial_opinions: Annotated[List[Any], operator.add]
     unified_forensics: dict
     formatted_brief: str
