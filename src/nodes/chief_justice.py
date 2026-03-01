@@ -137,13 +137,10 @@ def chief_justice_node(state: AgentState) -> dict[str, Any]:
     # Criterion Breakdown
     lines.append(f"## Criterion Breakdown\n")
     remediation_plan = []
-    print(f"Processing {criterion_map} criteria for synthesis.")
     for crit in rubric_criteria:
         cid = crit["id"]
         entry = criterion_map[cid]
-        print(f"Processing criterion: {cid} with {len(entry['assessments'])} assessments")
         name = entry["name"]
-        print(f"Assessments for {name}: {entry['assessments']}")
         assessments = entry["assessments"]
         if not assessments:
             continue

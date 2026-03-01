@@ -36,11 +36,3 @@ def _status_from_score(final_score: float) -> str:
     if final_score >= 2.5:
         return "Needs Improvement"
     return "Fail"
-
-markdown_report = "# Peer Audit Report\n\nRubric missing or invalid."
-
-# print(markdown_report)
-with open("peer_audit_report.md", "w", encoding="utf-8") as f:
-    f.write(markdown_report)
-if errors:
-    print("Errors:", errors)
